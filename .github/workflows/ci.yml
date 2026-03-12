@@ -1,0 +1,122 @@
+name: FitLake CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Code Quality ─────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linters
+        run: pip install ruff black mypy
+
+      - name: Run ruff
+        run: ruff check pipeline/ spark/ quality/ analytics/ tests/ data/
+
+      - name: Check black formatting
+        run: black --check pipeline/ spark/ quality/ analytics/ tests/ data/
+
+  # ── Unit Tests ────────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            numpy pandas scipy \
+            pytest pytest-cov pytest-mock \
+            loguru pydantic
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=pipeline --cov-report=xml --cov-report=term-missing -m "not integration"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ── Data Generation Smoke Test ────────────────────────────────────────────────
+  data-gen:
+    name: Data Generation Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install numpy pandas scipy click loguru faker
+
+      - name: Generate synthetic data
+        run: python data/generate_data.py --users 3 --days 14 --output /tmp/fitlake_test
+
+      - name: Validate output files
+        run: |
+          python - << 'EOF'
+          import json, pathlib
+          for fname in ["hrv.json", "sleep.json", "activity.json"]:
+              data = json.loads((pathlib.Path("/tmp/fitlake_test") / fname).read_text())
+              assert len(data) == 3 * 14, f"{fname}: expected 42 records, got {len(data)}"
+              print(f"✓ {fname}: {len(data)} records")
+          print("All data generation checks passed!")
+          EOF
+
+  # ── Quality Checks ────────────────────────────────────────────────────────────
+  quality:
+    name: Data Quality Checks
+    runs-on: ubuntu-latest
+    needs: data-gen
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install numpy pandas scipy click loguru faker
+
+      - name: Generate test data
+        run: python data/generate_data.py --users 3 --days 14 --output data/raw
+
+      - name: Run quality checks
+        run: python quality/run_checks.py
+
+  # ── Docker Build ──────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dashboard image
+        run: docker build -f analytics/Dockerfile -t fitlake-dashboard:ci .
+
+      - name: Build check passed
+        run: echo "Docker build succeeded"
