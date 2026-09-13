@@ -19,8 +19,13 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Pinned to match requirements.txt. Unpinned installs made this job
+      # track the latest upstream release, so lint results changed without a
+      # code change — e.g. newer ruff drops E402 from its default rule set,
+      # which turns the deliberate `# noqa: E402` directives in dashboard.py
+      # into RUF100 "unused noqa" failures.
       - name: Install linters
-        run: pip install ruff black mypy
+        run: pip install ruff==0.4.9 black==24.4.2 mypy==1.10.0
 
       - name: Run ruff
         run: ruff check pipeline/ spark/ quality/ analytics/ tests/ data/
