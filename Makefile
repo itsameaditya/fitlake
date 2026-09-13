@@ -63,11 +63,7 @@ run-quality: ## Run Great Expectations data quality checks
 # ── Local Dev (no Docker) ─────────────────────────────────────────────────────
 
 run-local: generate-data ## Run pipeline locally (no Docker, uses local files)
-	$(PYTHON) pipeline/ingestion/sensor_ingestor.py
-	$(PYTHON) pipeline/transformation/cleaner.py
-	$(PYTHON) pipeline/aggregation/recovery_score.py
-	$(PYTHON) pipeline/aggregation/strain_calculator.py
-	$(PYTHON) pipeline/aggregation/sleep_analyzer.py
+	$(PYTHON) pipeline/run_local.py
 	@echo "✓ Local pipeline complete! Run 'make dashboard-local' to view insights."
 
 # ── UI / Dashboards ───────────────────────────────────────────────────────────

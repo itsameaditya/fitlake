@@ -32,9 +32,9 @@ RHR_WEIGHT = 0.25
 SLEEP_WEIGHT = 0.25
 SPO2_WEIGHT = 0.10
 
-HRV_BASELINE_WINDOW = 7     # days for rolling HRV baseline
-RHR_BASELINE_WINDOW = 7     # days for rolling RHR baseline
-MIN_BASELINE_DAYS = 3       # minimum days before scoring is meaningful
+HRV_BASELINE_WINDOW = 7  # days for rolling HRV baseline
+RHR_BASELINE_WINDOW = 7  # days for rolling RHR baseline
+MIN_BASELINE_DAYS = 3  # minimum days before scoring is meaningful
 
 RED_THRESHOLD = 33
 YELLOW_THRESHOLD = 66
@@ -44,8 +44,8 @@ YELLOW_THRESHOLD = 66
 class DailyMetrics:
     user_id: str
     date: str
-    hrv_rmssd: float           # ms
-    resting_hr: float          # bpm
+    hrv_rmssd: float  # ms
+    resting_hr: float  # bpm
     total_sleep_hours: float
     sleep_efficiency_pct: float
     rem_sleep_minutes: float
@@ -58,17 +58,17 @@ class DailyMetrics:
 class RecoveryScore:
     user_id: str
     date: str
-    recovery_score: int         # 0-100
-    recovery_state: str         # "Red", "Yellow", "Green"
-    hrv_component: float        # 0-100
-    rhr_component: float        # 0-100
-    sleep_component: float      # 0-100
-    spo2_component: float       # 0-100
+    recovery_score: int  # 0-100
+    recovery_state: str  # "Red", "Yellow", "Green"
+    hrv_component: float  # 0-100
+    rhr_component: float  # 0-100
+    sleep_component: float  # 0-100
+    spo2_component: float  # 0-100
     hrv_rmssd: float
     hrv_baseline: float
     rhr_baseline: float
-    sleep_performance: float    # 0-100
-    needs_more_baseline: bool   # True if < MIN_BASELINE_DAYS of data
+    sleep_performance: float  # 0-100
+    needs_more_baseline: bool  # True if < MIN_BASELINE_DAYS of data
 
 
 def _hrv_score(hrv_today: float, hrv_baseline: float, hrv_std: float) -> float:
@@ -124,7 +124,9 @@ def _sleep_performance_score(
     # Sleep architecture component (30%)
     total_sleep_minutes = total_hours * 60
     rem_pct = rem_minutes / total_sleep_minutes * 100 if total_sleep_minutes > 0 else 0
-    deep_pct = deep_minutes / total_sleep_minutes * 100 if total_sleep_minutes > 0 else 0
+    deep_pct = (
+        deep_minutes / total_sleep_minutes * 100 if total_sleep_minutes > 0 else 0
+    )
 
     # Optimal: 20-25% REM, 15-20% Deep
     rem_score = 100 - abs(rem_pct - 22.5) * 4
@@ -256,7 +258,9 @@ def compute_recovery_scores(df: pd.DataFrame) -> pd.DataFrame:
                 needs_baseline = True
             else:
                 hrv_base = row["hrv_baseline"]
-                hrv_std = row["hrv_std"] if not pd.isna(row["hrv_std"]) else hrv_base * 0.10
+                hrv_std = (
+                    row["hrv_std"] if not pd.isna(row["hrv_std"]) else hrv_base * 0.10
+                )
                 rhr_base = row["rhr_baseline"]
                 needs_baseline = False
 
@@ -289,7 +293,6 @@ def compute_recovery_scores(df: pd.DataFrame) -> pd.DataFrame:
 
 if __name__ == "__main__":
     # Quick smoke test
-    import json
     from pathlib import Path
 
     raw_dir = Path("data/raw")
@@ -300,9 +303,18 @@ if __name__ == "__main__":
         sleep_df = pd.read_json(raw_dir / "sleep.json")
 
         merged = hrv_df.merge(
-            sleep_df[["user_id", "date", "total_sleep_hours", "sleep_efficiency_pct",
-                       "rem_sleep_minutes", "deep_sleep_minutes", "spo2_avg_pct",
-                       "resting_hr_bpm"]],
+            sleep_df[
+                [
+                    "user_id",
+                    "date",
+                    "total_sleep_hours",
+                    "sleep_efficiency_pct",
+                    "rem_sleep_minutes",
+                    "deep_sleep_minutes",
+                    "spo2_avg_pct",
+                    "resting_hr_bpm",
+                ]
+            ],
             on=["user_id", "date"],
         )
 

@@ -18,95 +18,110 @@ Tables created:
 """
 
 import os
-import sys
 from datetime import datetime
-from pathlib import Path
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
-    StructType, StructField, StringType, DoubleType,
-    IntegerType, BooleanType, TimestampType,
+    StructType,
+    StructField,
+    StringType,
+    DoubleType,
+    IntegerType,
+    BooleanType,
 )
 from loguru import logger
 
 # ── Schema Definitions ────────────────────────────────────────────────────────
 
-HRV_SCHEMA = StructType([
-    StructField("reading_id", StringType(), False),
-    StructField("user_id", StringType(), False),
-    StructField("date", StringType(), False),
-    StructField("hrv_rmssd_ms", DoubleType(), True),
-    StructField("hrv_sdnn_ms", DoubleType(), True),
-    StructField("respiratory_rate_brpm", DoubleType(), True),
-    StructField("is_anomaly", BooleanType(), True),
-    StructField("ingested_at", StringType(), True),
-])
+HRV_SCHEMA = StructType(
+    [
+        StructField("reading_id", StringType(), False),
+        StructField("user_id", StringType(), False),
+        StructField("date", StringType(), False),
+        StructField("hrv_rmssd_ms", DoubleType(), True),
+        StructField("hrv_sdnn_ms", DoubleType(), True),
+        StructField("respiratory_rate_brpm", DoubleType(), True),
+        StructField("is_anomaly", BooleanType(), True),
+        StructField("ingested_at", StringType(), True),
+    ]
+)
 
-SLEEP_SCHEMA = StructType([
-    StructField("record_id", StringType(), False),
-    StructField("user_id", StringType(), False),
-    StructField("date", StringType(), False),
-    StructField("total_sleep_hours", DoubleType(), True),
-    StructField("deep_sleep_minutes", DoubleType(), True),
-    StructField("rem_sleep_minutes", DoubleType(), True),
-    StructField("light_sleep_minutes", DoubleType(), True),
-    StructField("awake_minutes", DoubleType(), True),
-    StructField("sleep_efficiency_pct", DoubleType(), True),
-    StructField("spo2_avg_pct", DoubleType(), True),
-    StructField("resting_hr_bpm", DoubleType(), True),
-    StructField("is_anomaly", BooleanType(), True),
-    StructField("ingested_at", StringType(), True),
-])
+SLEEP_SCHEMA = StructType(
+    [
+        StructField("record_id", StringType(), False),
+        StructField("user_id", StringType(), False),
+        StructField("date", StringType(), False),
+        StructField("total_sleep_hours", DoubleType(), True),
+        StructField("deep_sleep_minutes", DoubleType(), True),
+        StructField("rem_sleep_minutes", DoubleType(), True),
+        StructField("light_sleep_minutes", DoubleType(), True),
+        StructField("awake_minutes", DoubleType(), True),
+        StructField("sleep_efficiency_pct", DoubleType(), True),
+        StructField("spo2_avg_pct", DoubleType(), True),
+        StructField("resting_hr_bpm", DoubleType(), True),
+        StructField("is_anomaly", BooleanType(), True),
+        StructField("ingested_at", StringType(), True),
+    ]
+)
 
-ACTIVITY_SCHEMA = StructType([
-    StructField("record_id", StringType(), False),
-    StructField("user_id", StringType(), False),
-    StructField("date", StringType(), False),
-    StructField("workout_type", StringType(), True),
-    StructField("workout_duration_minutes", IntegerType(), True),
-    StructField("steps", IntegerType(), True),
-    StructField("active_calories", IntegerType(), True),
-    StructField("total_calories", IntegerType(), True),
-    StructField("avg_hr_bpm", DoubleType(), True),
-    StructField("peak_hr_bpm", DoubleType(), True),
-    StructField("zone1_minutes", IntegerType(), True),
-    StructField("zone2_minutes", IntegerType(), True),
-    StructField("zone3_minutes", IntegerType(), True),
-    StructField("zone4_minutes", IntegerType(), True),
-    StructField("zone5_minutes", IntegerType(), True),
-    StructField("zone6_minutes", IntegerType(), True),
-    StructField("ingested_at", StringType(), True),
-])
+ACTIVITY_SCHEMA = StructType(
+    [
+        StructField("record_id", StringType(), False),
+        StructField("user_id", StringType(), False),
+        StructField("date", StringType(), False),
+        StructField("workout_type", StringType(), True),
+        StructField("workout_duration_minutes", IntegerType(), True),
+        StructField("steps", IntegerType(), True),
+        StructField("active_calories", IntegerType(), True),
+        StructField("total_calories", IntegerType(), True),
+        StructField("avg_hr_bpm", DoubleType(), True),
+        StructField("peak_hr_bpm", DoubleType(), True),
+        StructField("zone1_minutes", IntegerType(), True),
+        StructField("zone2_minutes", IntegerType(), True),
+        StructField("zone3_minutes", IntegerType(), True),
+        StructField("zone4_minutes", IntegerType(), True),
+        StructField("zone5_minutes", IntegerType(), True),
+        StructField("zone6_minutes", IntegerType(), True),
+        StructField("ingested_at", StringType(), True),
+    ]
+)
 
 # Schema evolution demo: skin_temp added at day 30
-SKIN_TEMP_SCHEMA = StructType([
-    StructField("record_id", StringType(), False),
-    StructField("user_id", StringType(), False),
-    StructField("date", StringType(), False),
-    StructField("skin_temp_delta_c", DoubleType(), True),
-    StructField("ingested_at", StringType(), True),
-])
+SKIN_TEMP_SCHEMA = StructType(
+    [
+        StructField("record_id", StringType(), False),
+        StructField("user_id", StringType(), False),
+        StructField("date", StringType(), False),
+        StructField("skin_temp_delta_c", DoubleType(), True),
+        StructField("ingested_at", StringType(), True),
+    ]
+)
 
 
 def build_spark_session() -> SparkSession:
     return (
-        SparkSession.builder
-        .appName("FitLake-Bronze-Ingestion")
-        .config("spark.sql.extensions",
-                "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        SparkSession.builder.appName("FitLake-Bronze-Ingestion")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
         .config("spark.sql.catalog.fitlake", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.fitlake.type", "hadoop")
         .config("spark.sql.catalog.fitlake.warehouse", "s3a://fitlake/warehouse")
-        .config("spark.hadoop.fs.s3a.endpoint",
-                os.getenv("MINIO_ENDPOINT", "http://minio:9000"))
-        .config("spark.hadoop.fs.s3a.access.key",
-                os.getenv("MINIO_ROOT_USER", "minioadmin"))
-        .config("spark.hadoop.fs.s3a.secret.key",
-                os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"))
+        .config(
+            "spark.hadoop.fs.s3a.endpoint",
+            os.getenv("MINIO_ENDPOINT", "http://minio:9000"),
+        )
+        .config(
+            "spark.hadoop.fs.s3a.access.key", os.getenv("MINIO_ROOT_USER", "minioadmin")
+        )
+        .config(
+            "spark.hadoop.fs.s3a.secret.key",
+            os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
+        )
         .config("spark.hadoop.fs.s3a.path.style.access", "true")
-        .config("spark.hadoop.fs.s3a.impl",
-                "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
         .getOrCreate()
     )
@@ -116,7 +131,8 @@ def create_bronze_tables(spark: SparkSession) -> None:
     """Create Iceberg tables if they don't exist (idempotent)."""
     spark.sql("CREATE NAMESPACE IF NOT EXISTS fitlake.bronze")
 
-    spark.sql("""
+    spark.sql(
+        """
         CREATE TABLE IF NOT EXISTS fitlake.bronze.hrv_readings (
             reading_id STRING NOT NULL,
             user_id STRING NOT NULL,
@@ -136,9 +152,11 @@ def create_bronze_tables(spark: SparkSession) -> None:
             'write.parquet.compression-codec' = 'snappy',
             'history.expire.max-snapshot-age-ms' = '604800000'
         )
-    """)
+    """
+    )
 
-    spark.sql("""
+    spark.sql(
+        """
         CREATE TABLE IF NOT EXISTS fitlake.bronze.sleep_records (
             record_id STRING NOT NULL,
             user_id STRING NOT NULL,
@@ -158,9 +176,11 @@ def create_bronze_tables(spark: SparkSession) -> None:
         )
         USING iceberg
         PARTITIONED BY (`date`)
-    """)
+    """
+    )
 
-    spark.sql("""
+    spark.sql(
+        """
         CREATE TABLE IF NOT EXISTS fitlake.bronze.activity_records (
             record_id STRING NOT NULL,
             user_id STRING NOT NULL,
@@ -184,15 +204,17 @@ def create_bronze_tables(spark: SparkSession) -> None:
         )
         USING iceberg
         PARTITIONED BY (`date`)
-    """)
+    """
+    )
 
     logger.info("Bronze tables created/verified.")
 
 
 def add_audit_columns(df: DataFrame, run_id: str) -> DataFrame:
     """Add ingestion audit metadata to every record."""
-    return df.withColumn("_ingestion_run_id", F.lit(run_id)) \
-             .withColumn("_ingest_timestamp", F.current_timestamp())
+    return df.withColumn("_ingestion_run_id", F.lit(run_id)).withColumn(
+        "_ingest_timestamp", F.current_timestamp()
+    )
 
 
 def upsert_to_bronze(
@@ -226,7 +248,12 @@ def run_bronze_ingestion(spark: SparkSession, data_dir: str, run_id: str) -> Non
     tables = [
         ("hrv.json", HRV_SCHEMA, "fitlake.bronze.hrv_readings", "reading_id"),
         ("sleep.json", SLEEP_SCHEMA, "fitlake.bronze.sleep_records", "record_id"),
-        ("activity.json", ACTIVITY_SCHEMA, "fitlake.bronze.activity_records", "record_id"),
+        (
+            "activity.json",
+            ACTIVITY_SCHEMA,
+            "fitlake.bronze.activity_records",
+            "record_id",
+        ),
     ]
 
     for filename, schema, target, key in tables:
@@ -244,12 +271,15 @@ def run_bronze_ingestion(spark: SparkSession, data_dir: str, run_id: str) -> Non
         if skin_df.count() > 0:
             # Demo: ALTER TABLE to add new column if it doesn't exist
             try:
-                spark.sql("""
+                spark.sql(
+                    """
                     ALTER TABLE fitlake.bronze.skin_temp_readings
                     SET TBLPROPERTIES ('schema.evolution' = 'true')
-                """)
+                """
+                )
             except Exception:
-                spark.sql("""
+                spark.sql(
+                    """
                     CREATE TABLE IF NOT EXISTS fitlake.bronze.skin_temp_readings (
                         record_id STRING NOT NULL,
                         user_id STRING NOT NULL,
@@ -261,11 +291,11 @@ def run_bronze_ingestion(spark: SparkSession, data_dir: str, run_id: str) -> Non
                     )
                     USING iceberg
                     PARTITIONED BY (`date`)
-                """)
+                """
+                )
             enriched_skin = add_audit_columns(skin_df, run_id)
             upsert_to_bronze(
-                spark, enriched_skin,
-                "fitlake.bronze.skin_temp_readings", "record_id"
+                spark, enriched_skin, "fitlake.bronze.skin_temp_readings", "record_id"
             )
             logger.info("Schema evolution: skin_temp table ingested successfully.")
     except Exception as e:

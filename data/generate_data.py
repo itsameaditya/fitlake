@@ -17,15 +17,20 @@ Design choices for realism:
 """
 
 import json
-import os
-import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+import click
+import numpy as np
+import pandas as pd
+from loguru import logger
+
 
 class _NumpyEncoder(json.JSONEncoder):
+    """Serialize numpy scalars/arrays, which json.dump rejects by default."""
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -35,10 +40,6 @@ class _NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super().default(obj)
 
-import click
-import numpy as np
-import pandas as pd
-from loguru import logger
 
 SEED = 42
 rng = np.random.default_rng(SEED)
@@ -46,27 +47,43 @@ rng = np.random.default_rng(SEED)
 WORKOUT_TYPES = ["Run", "Cycling", "HIIT", "Strength", "Yoga", "Rest", "Walk", "Swim"]
 WORKOUT_WEIGHTS = [0.20, 0.12, 0.10, 0.18, 0.08, 0.15, 0.12, 0.05]
 
-HR_ZONE_LABELS = {1: "Recovery", 2: "Light", 3: "Moderate", 4: "Hard", 5: "Very Hard", 6: "Max"}
+HR_ZONE_LABELS = {
+    1: "Recovery",
+    2: "Light",
+    3: "Moderate",
+    4: "Hard",
+    5: "Very Hard",
+    6: "Max",
+}
 
 
 @dataclass
 class UserProfile:
     """Physiological baseline for a synthetic user."""
+
     user_id: str
     age: int
-    resting_hr_baseline: float     # bpm
-    hrv_baseline: float            # rMSSD ms
-    max_hr: int                    # 220 - age (approx)
-    fitness_level: str             # "beginner", "intermediate", "athlete"
-    sleep_baseline: float          # hours
-    spo2_baseline: float           # %
+    resting_hr_baseline: float  # bpm
+    hrv_baseline: float  # rMSSD ms
+    max_hr: int  # 220 - age (approx)
+    fitness_level: str  # "beginner", "intermediate", "athlete"
+    sleep_baseline: float  # hours
+    spo2_baseline: float  # %
 
     @classmethod
     def generate(cls, user_id: str) -> "UserProfile":
         age = int(rng.integers(20, 45))
         fitness = rng.choice(["beginner", "intermediate", "athlete"], p=[0.2, 0.5, 0.3])
-        hrv_ranges = {"beginner": (25, 55), "intermediate": (45, 80), "athlete": (65, 110)}
-        rhr_ranges = {"beginner": (60, 75), "intermediate": (52, 68), "athlete": (42, 58)}
+        hrv_ranges = {
+            "beginner": (25, 55),
+            "intermediate": (45, 80),
+            "athlete": (65, 110),
+        }
+        rhr_ranges = {
+            "beginner": (60, 75),
+            "intermediate": (52, 68),
+            "athlete": (42, 58),
+        }
         lo, hi = hrv_ranges[fitness]
         rlo, rhi = rhr_ranges[fitness]
         return cls(
@@ -94,7 +111,9 @@ def simulate_training_load(day_index: int, profile: UserProfile) -> float:
         # Recovery week
         base_load = 0.15
     # Add athlete modifier
-    athlete_mod = {"beginner": 0.7, "intermediate": 1.0, "athlete": 1.3}[profile.fitness_level]
+    athlete_mod = {"beginner": 0.7, "intermediate": 1.0, "athlete": 1.3}[
+        profile.fitness_level
+    ]
     # Weekly pattern: Mon hard, Fri-Sat hard, Sun rest
     dow = day_index % 7
     dow_pattern = [1.1, 1.0, 0.9, 1.0, 1.1, 1.2, 0.5]
@@ -162,7 +181,9 @@ def generate_sleep_record(
         "awake_minutes": round(total_minutes * awake_pct),
         "sleep_efficiency_pct": round(sleep_efficiency, 1),
         "spo2_avg_pct": round(float(np.clip(spo2, 85, 100)), 1),
-        "resting_hr_bpm": round(user.resting_hr_baseline + rng.normal(0, 2.5) + training_load * 8, 1),
+        "resting_hr_bpm": round(
+            user.resting_hr_baseline + rng.normal(0, 2.5) + training_load * 8, 1
+        ),
         "is_anomaly": anomaly,
         "ingested_at": datetime.utcnow().isoformat(),
     }
@@ -188,15 +209,26 @@ def generate_activity_record(
     else:
         workout_duration = int(rng.integers(25, 90))
         intensity_map = {
-            "Run": 0.72, "Cycling": 0.68, "HIIT": 0.82,
-            "Strength": 0.65, "Yoga": 0.50, "Walk": 0.52, "Swim": 0.70,
+            "Run": 0.72,
+            "Cycling": 0.68,
+            "HIIT": 0.82,
+            "Strength": 0.65,
+            "Yoga": 0.50,
+            "Walk": 0.52,
+            "Swim": 0.70,
         }
         intensity = intensity_map.get(workout_type, 0.65) * training_load
         avg_hr = user.max_hr * intensity * rng.uniform(0.9, 1.05)
         peak_hr = min(user.max_hr * 0.98, avg_hr * rng.uniform(1.10, 1.25))
-        active_calories = int(workout_duration * (avg_hr / 100) * 8 * rng.uniform(0.8, 1.2))
+        active_calories = int(
+            workout_duration * (avg_hr / 100) * 8 * rng.uniform(0.8, 1.2)
+        )
 
-    steps = int(rng.integers(3000, 15000)) if workout_type != "Rest" else int(rng.integers(1000, 5000))
+    steps = (
+        int(rng.integers(3000, 15000))
+        if workout_type != "Rest"
+        else int(rng.integers(1000, 5000))
+    )
     total_calories = active_calories + int(rng.integers(1400, 2200))
 
     # Compute HR zone minutes (for strain calculation)
@@ -223,7 +255,9 @@ def generate_activity_record(
     }
 
 
-def _estimate_hr_zones(avg_hr: float, peak_hr: float, duration: int, max_hr: int) -> dict:
+def _estimate_hr_zones(
+    avg_hr: float, peak_hr: float, duration: int, max_hr: int
+) -> dict:
     """Estimate time in each HR zone from average and peak HR."""
     thresholds = {
         1: max_hr * 0.50,
@@ -250,7 +284,9 @@ def _estimate_hr_zones(avg_hr: float, peak_hr: float, duration: int, max_hr: int
     return distribution
 
 
-def generate_skin_temp(date_: date, user: UserProfile, day_index: int) -> Optional[dict]:
+def generate_skin_temp(
+    date_: date, user: UserProfile, day_index: int
+) -> Optional[dict]:
     """
     Skin temperature delta (°C vs baseline).
     Schema evolution demo: only available from day 30 onward.
@@ -272,41 +308,47 @@ def generate_skin_temp(date_: date, user: UserProfile, day_index: int) -> Option
     }
 
 
-def generate_dataset(
-    n_users: int, n_days: int, output_dir: Path
-) -> None:
+def generate_dataset(n_users: int, n_days: int, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     users = [UserProfile.generate(f"user_{i:03d}") for i in range(1, n_users + 1)]
     start_date = date(2024, 1, 1)
 
-    records = {
-        "hrv": [], "sleep": [], "activity": [], "skin_temp": [], "users": []
-    }
+    records = {"hrv": [], "sleep": [], "activity": [], "skin_temp": [], "users": []}
 
     for user in users:
-        records["users"].append({
-            "user_id": user.user_id,
-            "age": user.age,
-            "fitness_level": user.fitness_level,
-            "hrv_baseline": round(user.hrv_baseline, 2),
-            "resting_hr_baseline": round(user.resting_hr_baseline, 2),
-            "max_hr": user.max_hr,
-        })
+        records["users"].append(
+            {
+                "user_id": user.user_id,
+                "age": user.age,
+                "fitness_level": user.fitness_level,
+                "hrv_baseline": round(user.hrv_baseline, 2),
+                "resting_hr_baseline": round(user.resting_hr_baseline, 2),
+                "max_hr": user.max_hr,
+            }
+        )
 
         for day_idx in range(n_days):
             current_date = start_date + timedelta(days=day_idx)
             load = simulate_training_load(day_idx, user)
             anomaly = rng.random() < 0.02  # 2% anomaly rate
 
-            records["hrv"].append(generate_hrv_reading(current_date, user, load, anomaly))
-            records["sleep"].append(generate_sleep_record(current_date, user, load, anomaly))
-            records["activity"].append(generate_activity_record(current_date, user, load, day_idx))
+            records["hrv"].append(
+                generate_hrv_reading(current_date, user, load, anomaly)
+            )
+            records["sleep"].append(
+                generate_sleep_record(current_date, user, load, anomaly)
+            )
+            records["activity"].append(
+                generate_activity_record(current_date, user, load, day_idx)
+            )
 
             temp = generate_skin_temp(current_date, user, day_idx)
             if temp:
                 records["skin_temp"].append(temp)
 
-        logger.info(f"Generated {n_days} days for {user.user_id} ({user.fitness_level})")
+        logger.info(
+            f"Generated {n_days} days for {user.user_id} ({user.fitness_level})"
+        )
 
     for name, data in records.items():
         if not data:
