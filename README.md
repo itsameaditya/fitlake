@@ -6,6 +6,9 @@
 ![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.9-017cee?logo=apacheairflow)
 ![DuckDB](https://img.shields.io/badge/DuckDB-0.10-ffd700)
 ![CI](https://github.com/itsameaditya/fitlake/actions/workflows/ci.yml/badge.svg)
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](STREAMLIT_URL_PLACEHOLDER)
+
+**▶ [Try the live dashboard](STREAMLIT_URL_PLACEHOLDER)** — no install required.
 
 Modern fitness wearables generate thousands of daily sensor readings — HRV, sleep stages, heart rate zones, SpO₂ — but raw data alone doesn't answer the question athletes actually care about: **"How recovered am I today, and should I train hard or rest?"**
 
@@ -102,11 +105,14 @@ Red    < 33  → Rest day.
 
 ```bash
 git clone https://github.com/itsameaditya/fitlake.git && cd fitlake
-pip install numpy pandas scipy click loguru streamlit plotly
+pip install -r analytics/requirements.txt
 make generate-data        # 10 users × 90 days → data/raw/
-make run-local            # Recovery scores + strain + sleep analytics
+make run-local            # Recovery scores + strain + sleep analytics → data/output/
 make dashboard-local      # http://localhost:8501
 ```
+
+`make generate-data` is optional — the dashboard generates the dataset on
+first run if `data/raw/` is empty.
 
 ### Full Stack (Docker)
 
