@@ -35,7 +35,16 @@ ZONE_WEIGHTS = {
 }
 
 MAX_STRAIN = 21.0
-NORMALIZATION_FACTOR = 150.0  # minutes × weight needed for max strain
+
+# Weighted minutes needed to reach max strain. Chosen so the top of the
+# distribution is not truncated: at 150 the hardest 4.3% of sessions all
+# clipped to exactly 21.0, flattening the top of the chart into a straight
+# line. At 250, clipping falls to ~1% while all five strain categories stay
+# populated and "All Out" stays rare.
+#
+# Note this maps weighted load to strain linearly. WHOOP's published scale is
+# logarithmic, so very hard sessions compress less there than here.
+NORMALIZATION_FACTOR = 250.0
 
 
 @dataclass

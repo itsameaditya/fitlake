@@ -42,7 +42,7 @@ This document explains how FitLake processes raw wearable sensor data into actio
                     ┌────────────┴────────────┐
                     ▼                         ▼
           ┌─────────────────┐     ┌───────────────────────┐
-          │  Quality Checks │     │  Great Expectations    │
+          │  Quality Checks │     │  Bound validation      │
           │  (run_checks.py)│     │  validation suites     │
           │                 │     │  physiological bounds   │
           │  18/20 passed   │     │  null checks, uniques  │
