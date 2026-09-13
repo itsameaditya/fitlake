@@ -2,10 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir \
-    streamlit plotly altair duckdb pandas numpy \
-    pyiceberg[s3fs,duckdb,pandas] boto3 s3fs loguru python-dotenv
+# Install from the same pinned file the hosted deploy uses, so the container
+# and Streamlit Cloud cannot drift apart. The previous hardcoded list omitted
+# statsmodels (needed by the OLS trendline) and click (needed by the data
+# generator the dashboard calls on first boot).
+COPY analytics/requirements.txt ./analytics/requirements.txt
+RUN pip install --no-cache-dir -r analytics/requirements.txt
 
 COPY analytics/ ./analytics/
 COPY pipeline/ ./pipeline/
