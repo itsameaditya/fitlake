@@ -14,7 +14,6 @@ import pandas as pd
 
 from pipeline.aggregation.recovery_score import (
     DailyMetrics,
-    RecoveryScore,
     calculate_recovery_score,
     compute_recovery_scores,
     _hrv_score,
@@ -28,14 +27,15 @@ from pipeline.aggregation.recovery_score import (
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def healthy_metrics() -> DailyMetrics:
     """A healthy day: good HRV, low RHR, great sleep, high SpO2."""
     return DailyMetrics(
         user_id="user_001",
         date="2024-03-01",
-        hrv_rmssd=75.0,       # Above baseline
-        resting_hr=48.0,      # Low RHR = good
+        hrv_rmssd=75.0,  # Above baseline
+        resting_hr=48.0,  # Low RHR = good
         total_sleep_hours=8.5,
         sleep_efficiency_pct=93.0,
         rem_sleep_minutes=110.0,
@@ -50,8 +50,8 @@ def poor_metrics() -> DailyMetrics:
     return DailyMetrics(
         user_id="user_001",
         date="2024-03-02",
-        hrv_rmssd=20.0,       # Well below baseline
-        resting_hr=72.0,      # Elevated RHR
+        hrv_rmssd=20.0,  # Well below baseline
+        resting_hr=72.0,  # Elevated RHR
         total_sleep_hours=4.5,
         sleep_efficiency_pct=65.0,
         rem_sleep_minutes=40.0,
@@ -68,22 +68,25 @@ def sample_dataframe() -> pd.DataFrame:
     for user_id in ["user_001", "user_002", "user_003"]:
         for day in range(30):
             date = pd.Timestamp("2024-01-01") + pd.Timedelta(days=day)
-            records.append({
-                "user_id": user_id,
-                "date": date.date().isoformat(),
-                "hrv_rmssd_ms": np.random.normal(60, 12),
-                "hrv_sdnn_ms": np.random.normal(110, 20),
-                "resting_hr_bpm": np.random.normal(58, 5),
-                "total_sleep_hours": np.random.normal(7.5, 0.8),
-                "sleep_efficiency_pct": np.random.normal(87, 5),
-                "rem_sleep_minutes": np.random.normal(105, 15),
-                "deep_sleep_minutes": np.random.normal(85, 12),
-                "spo2_avg_pct": np.random.normal(97.5, 0.8),
-            })
+            records.append(
+                {
+                    "user_id": user_id,
+                    "date": date.date().isoformat(),
+                    "hrv_rmssd_ms": np.random.normal(60, 12),
+                    "hrv_sdnn_ms": np.random.normal(110, 20),
+                    "resting_hr_bpm": np.random.normal(58, 5),
+                    "total_sleep_hours": np.random.normal(7.5, 0.8),
+                    "sleep_efficiency_pct": np.random.normal(87, 5),
+                    "rem_sleep_minutes": np.random.normal(105, 15),
+                    "deep_sleep_minutes": np.random.normal(85, 12),
+                    "spo2_avg_pct": np.random.normal(97.5, 0.8),
+                }
+            )
     return pd.DataFrame(records)
 
 
 # ── Component Tests ───────────────────────────────────────────────────────────
+
 
 class TestHRVScore:
     def test_at_baseline_scores_near_50(self):
@@ -127,11 +130,14 @@ class TestRHRScore:
 
 
 class TestSleepScore:
-    @pytest.mark.parametrize("hours,expected_min", [
-        (8.0, 70),   # Ideal sleep
-        (4.0, 0),    # Very short
-        (6.0, 40),   # Just below ideal
-    ])
+    @pytest.mark.parametrize(
+        "hours,expected_min",
+        [
+            (8.0, 70),  # Ideal sleep
+            (4.0, 0),  # Very short
+            (6.0, 40),  # Just below ideal
+        ],
+    )
     def test_duration_scoring(self, hours, expected_min):
         score = _sleep_performance_score(hours, 90, 100, 90)
         assert score >= expected_min
@@ -150,12 +156,15 @@ class TestSleepScore:
 
 
 class TestSpO2Score:
-    @pytest.mark.parametrize("spo2,expected_min", [
-        (98, 95),
-        (95, 75),
-        (90, 15),
-        (85, 0),
-    ])
+    @pytest.mark.parametrize(
+        "spo2,expected_min",
+        [
+            (98, 95),
+            (95, 75),
+            (90, 15),
+            (85, 0),
+        ],
+    )
     def test_spo2_thresholds(self, spo2, expected_min):
         assert _spo2_score(spo2) >= expected_min
 
@@ -167,6 +176,7 @@ class TestSpO2Score:
 
 
 # ── Integration Tests ─────────────────────────────────────────────────────────
+
 
 class TestCalculateRecoveryScore:
     def test_healthy_day_is_green(self, healthy_metrics):
@@ -224,8 +234,13 @@ class TestComputeRecoveryScores:
 
     def test_state_thresholds_consistent(self, sample_dataframe):
         result = compute_recovery_scores(sample_dataframe)
-        assert (result[result["recovery_state"] == "Red"]["recovery_score"] < RED_THRESHOLD).all()
-        assert (result[result["recovery_state"] == "Green"]["recovery_score"] >= YELLOW_THRESHOLD).all()
+        assert (
+            result[result["recovery_state"] == "Red"]["recovery_score"] < RED_THRESHOLD
+        ).all()
+        assert (
+            result[result["recovery_state"] == "Green"]["recovery_score"]
+            >= YELLOW_THRESHOLD
+        ).all()
 
     def test_baseline_users_flagged(self, sample_dataframe):
         # Users with < MIN_BASELINE_DAYS should have needs_more_baseline=True initially

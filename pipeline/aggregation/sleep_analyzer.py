@@ -11,12 +11,11 @@ Computes derived sleep metrics beyond raw duration, including:
 from __future__ import annotations
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 IDEAL_SLEEP_HOURS = 8.0
-SLEEP_DEBT_WINDOW = 14        # days
-CONSISTENCY_WINDOW = 7        # days
+SLEEP_DEBT_WINDOW = 14  # days
+CONSISTENCY_WINDOW = 7  # days
 
 
 def compute_sleep_metrics(sleep_df: pd.DataFrame) -> pd.DataFrame:
@@ -57,21 +56,18 @@ def compute_sleep_metrics(sleep_df: pd.DataFrame) -> pd.DataFrame:
         )
         # Map std dev → 0-100 score (std=0 → 100, std=2h → 0)
         user_df["sleep_consistency_score"] = (
-            (1 - user_df["duration_7d_std"] / 2.0) * 100
-        ).clip(0, 100).round(1)
+            ((1 - user_df["duration_7d_std"] / 2.0) * 100).clip(0, 100).round(1)
+        )
 
         # Rolling efficiency
         user_df["efficiency_7d_avg"] = (
-            user_df["sleep_efficiency_pct"]
-            .rolling(7, min_periods=1)
-            .mean()
-            .round(1)
+            user_df["sleep_efficiency_pct"].rolling(7, min_periods=1).mean().round(1)
         )
 
         # Stage percentages
-        user_df["rem_pct"] = (
-            user_df["rem_sleep_minutes"] / total_minutes * 100
-        ).round(1)
+        user_df["rem_pct"] = (user_df["rem_sleep_minutes"] / total_minutes * 100).round(
+            1
+        )
         user_df["deep_pct"] = (
             user_df["deep_sleep_minutes"] / total_minutes * 100
         ).round(1)
@@ -81,7 +77,9 @@ def compute_sleep_metrics(sleep_df: pd.DataFrame) -> pd.DataFrame:
 
         results.append(user_df)
 
-    enriched = pd.concat(results).sort_values(["user_id", "date"]).reset_index(drop=True)
+    enriched = (
+        pd.concat(results).sort_values(["user_id", "date"]).reset_index(drop=True)
+    )
     logger.info(
         f"Sleep metrics computed for {enriched.user_id.nunique()} users | "
         f"Avg sleep: {enriched.total_sleep_hours.mean():.2f}h | "

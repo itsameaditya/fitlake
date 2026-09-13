@@ -42,12 +42,12 @@ NORMALIZATION_FACTOR = 150.0  # minutes × weight needed for max strain
 class StrainResult:
     user_id: str
     date: str
-    strain_score: float       # 0-21
-    strain_category: str      # "Recovery", "Light", "Moderate", "Hard", "All Out"
+    strain_score: float  # 0-21
+    strain_category: str  # "Recovery", "Light", "Moderate", "Hard", "All Out"
     total_active_minutes: int
-    peak_hr_pct_max: float    # peak HR as % of max HR
-    zone_breakdown: dict      # {zone: minutes}
-    dominant_zone: int        # zone where most time was spent
+    peak_hr_pct_max: float  # peak HR as % of max HR
+    zone_breakdown: dict  # {zone: minutes}
+    dominant_zone: int  # zone where most time was spent
 
 
 STRAIN_CATEGORIES = [
@@ -97,7 +97,9 @@ def calculate_strain_score(
     )
 
 
-def compute_strain_scores(activity_df: pd.DataFrame, user_profiles_df: pd.DataFrame) -> pd.DataFrame:
+def compute_strain_scores(
+    activity_df: pd.DataFrame, user_profiles_df: pd.DataFrame
+) -> pd.DataFrame:
     """
     Compute strain scores for all users and dates.
 
@@ -115,9 +117,7 @@ def compute_strain_scores(activity_df: pd.DataFrame, user_profiles_df: pd.DataFr
 
     results = []
     for _, row in merged.iterrows():
-        zone_minutes = {
-            z: float(row.get(f"zone{z}_minutes", 0)) for z in range(1, 7)
-        }
+        zone_minutes = {z: float(row.get(f"zone{z}_minutes", 0)) for z in range(1, 7)}
         result = calculate_strain_score(
             zone_minutes,
             peak_hr=row["peak_hr_bpm"],
@@ -125,16 +125,21 @@ def compute_strain_scores(activity_df: pd.DataFrame, user_profiles_df: pd.DataFr
         )
         result.user_id = row["user_id"]
         result.date = str(row["date"])
-        results.append({
-            "user_id": result.user_id,
-            "date": result.date,
-            "strain_score": result.strain_score,
-            "strain_category": result.strain_category,
-            "total_active_minutes": result.total_active_minutes,
-            "peak_hr_pct_max": result.peak_hr_pct_max,
-            "dominant_zone": result.dominant_zone,
-            **{f"zone{z}_minutes": result.zone_breakdown.get(z, 0) for z in range(1, 7)},
-        })
+        results.append(
+            {
+                "user_id": result.user_id,
+                "date": result.date,
+                "strain_score": result.strain_score,
+                "strain_category": result.strain_category,
+                "total_active_minutes": result.total_active_minutes,
+                "peak_hr_pct_max": result.peak_hr_pct_max,
+                "dominant_zone": result.dominant_zone,
+                **{
+                    f"zone{z}_minutes": result.zone_breakdown.get(z, 0)
+                    for z in range(1, 7)
+                },
+            }
+        )
 
     df = pd.DataFrame(results)
     logger.info(

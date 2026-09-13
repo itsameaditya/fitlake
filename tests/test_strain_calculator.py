@@ -7,7 +7,6 @@ import numpy as np
 from pipeline.aggregation.strain_calculator import (
     calculate_strain_score,
     compute_strain_scores,
-    ZONE_WEIGHTS,
     MAX_STRAIN,
 )
 
@@ -51,7 +50,11 @@ class TestCalculateStrainScore:
         for zones, _ in cases:
             result = calculate_strain_score(zones, 100.0, 190)
             assert result.strain_category in [
-                "Recovery", "Light", "Moderate", "Hard", "All Out"
+                "Recovery",
+                "Light",
+                "Moderate",
+                "Hard",
+                "All Out",
             ]
 
 
@@ -62,27 +65,34 @@ class TestComputeStrainScores:
         records = []
         for user in ["user_001", "user_002"]:
             for day in range(10):
-                records.append({
-                    "record_id": f"{user}_{day}",
-                    "user_id": user,
-                    "date": f"2024-01-{day+1:02d}",
-                    "workout_type": "Run",
-                    "workout_duration_minutes": 45,
-                    "steps": 8000,
-                    "active_calories": 400,
-                    "total_calories": 2100,
-                    "avg_hr_bpm": 145.0,
-                    "peak_hr_bpm": 175.0,
-                    **{f"zone{z}_minutes": np.random.randint(0, 20) for z in range(1, 7)},
-                })
+                records.append(
+                    {
+                        "record_id": f"{user}_{day}",
+                        "user_id": user,
+                        "date": f"2024-01-{day+1:02d}",
+                        "workout_type": "Run",
+                        "workout_duration_minutes": 45,
+                        "steps": 8000,
+                        "active_calories": 400,
+                        "total_calories": 2100,
+                        "avg_hr_bpm": 145.0,
+                        "peak_hr_bpm": 175.0,
+                        **{
+                            f"zone{z}_minutes": np.random.randint(0, 20)
+                            for z in range(1, 7)
+                        },
+                    }
+                )
         return pd.DataFrame(records)
 
     @pytest.fixture
     def users_df(self) -> pd.DataFrame:
-        return pd.DataFrame({
-            "user_id": ["user_001", "user_002"],
-            "max_hr": [185, 190],
-        })
+        return pd.DataFrame(
+            {
+                "user_id": ["user_001", "user_002"],
+                "max_hr": [185, 190],
+            }
+        )
 
     def test_returns_dataframe(self, activity_df, users_df):
         result = compute_strain_scores(activity_df, users_df)
