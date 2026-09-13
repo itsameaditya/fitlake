@@ -13,8 +13,9 @@ faker==24.4.0
 apache-airflow==2.9.1
 apache-airflow-providers-apache-spark==4.8.0
 
-# Data quality
-great-expectations==0.18.15
+# Data quality: quality/run_checks.py asserts physiological bounds in Pandas.
+# great-expectations was pinned here but never imported; removed rather than
+# left as an unsupported dependency.
 
 # OpenLineage (data lineage)
 openlineage-python==1.16.0

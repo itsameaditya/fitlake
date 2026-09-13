@@ -75,15 +75,20 @@ def _hrv_score(hrv_today: float, hrv_baseline: float, hrv_std: float) -> float:
     """
     Score HRV relative to personal baseline using a standardized z-score.
 
-    A z-score of 0 (= exactly at baseline) maps to ~50 points.
-    Each standard deviation above baseline adds ~20 points.
+    A z-score of 0 (= exactly at baseline) maps to 50 points. One SD below
+    baseline lands near 21, two SD near 9 — the curve saturates past ~2 SD.
+
+    The amplitude was previously 20, which confined this component to
+    [30, 70] and contradicted the range stated on the mapping comment below.
+    That capped the 40%-weighted HRV term's influence on the final score at
+    +/-8 points, so no combination of inputs could reach the Red band (<33).
     """
     if hrv_std < 1:
         hrv_std = hrv_baseline * 0.10  # fallback: 10% of baseline as SD
 
     z = (hrv_today - hrv_baseline) / hrv_std
-    # Sigmoid-like mapping: z in [-3, +3] → [10, 95]
-    score = 50 + 20 * np.tanh(z * 1.2)
+    # Sigmoid-like mapping: z in [-3, +3] → ~[6, 94]
+    score = 50 + 45 * np.tanh(z * 0.75)
     return float(np.clip(score, 5, 98))
 
 

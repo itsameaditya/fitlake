@@ -1,16 +1,19 @@
 """
-Data Quality — Great Expectations Validation Suite.
+Data Quality — physiological bound validation.
 
-Validates Bronze Iceberg tables before Silver transformation.
+Validates raw sensor tables before Silver transformation.
 Checks include:
   - Completeness: no null primary keys
-  - Freshness: data not older than 2 days
   - Value ranges: physiologically valid sensor readings
   - Uniqueness: no duplicate records per user-date
-  - Referential integrity: all user_ids in known set
 
-Results are written to a GE Data Docs HTML report and
+Results are written to quality/reports/quality_report.json and the
 quality_passed flag is pushed to Airflow XCom.
+
+Implementation note: these are explicit bound assertions in pure Pandas, not
+a Great Expectations suite. The expectation-style rule names below mirror GE's
+vocabulary for readability, but no GE data context, suite, or checkpoint is
+involved — the dependency is not installed or imported.
 """
 
 from __future__ import annotations
@@ -21,10 +24,6 @@ from pathlib import Path
 
 import pandas as pd
 from loguru import logger
-
-# Note: these checks validate against explicit physiological bounds in pure
-# Pandas rather than through a Great Expectations suite. An unused GE import
-# probe previously lived here; it was removed because nothing ever read it.
 
 
 def _basic_checks(df: pd.DataFrame, table_name: str, rules: list[dict]) -> list[dict]:

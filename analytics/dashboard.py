@@ -152,7 +152,7 @@ with st.sidebar:
     - Apache Iceberg (open-table)
     - PySpark 3.5 ETL
     - Apache Airflow DAGs
-    - Great Expectations QA
+    - Data quality validation
     - OpenLineage + Marquez
     - MinIO (S3-compatible)
     - DuckDB analytics
@@ -479,6 +479,6 @@ if len(all_rec) > 0 and "hrv_rmssd" in all_rec.columns:
 st.markdown("---")
 st.caption(
     "FitLake — Open-Source Fitness Analytics Data Lakehouse | "
-    "Built with Apache Iceberg, PySpark, Airflow, Great Expectations, DuckDB | "
+    "Built with Apache Iceberg, PySpark, Airflow, DuckDB | "
     "github.com/your-handle/fitlake"
 )
