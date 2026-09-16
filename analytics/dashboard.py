@@ -27,6 +27,13 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
+from quality.bounds import (  # noqa: E402
+    ACTIVITY_BOUNDS,
+    BOUND_REASONS,
+    HRV_BOUNDS,
+    SLEEP_BOUNDS,
+)
+
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="FitLake Analytics",
@@ -130,6 +137,58 @@ def load_data() -> dict[str, pd.DataFrame]:
             dfs[key]["date"] = pd.to_datetime(dfs[key]["date"])
 
     return dfs
+
+
+@st.cache_data(ttl=300)
+def load_quality_report() -> tuple[pd.DataFrame, int, int]:
+    """
+    Apply the Silver layer's quarantine bounds to the raw sensor tables.
+
+    A hosted runner has no Spark cluster, so it cannot read
+    fitlake.silver.quarantine directly. It can apply the same bounds from
+    quality/bounds.py to the same raw files Bronze ingests, which reproduces
+    exactly which records Silver rejects and why.
+
+    Returns (one row per violated rule, records scanned, rules enforced).
+    A record that breaks two bounds appears twice — a strap that loses contact
+    reports both its average and its peak HR too low.
+    """
+    raw_dir = REPO_ROOT / "data" / "raw"
+    tables = [
+        ("hrv_readings", "hrv.json", HRV_BOUNDS, "reading_id"),
+        ("sleep_records", "sleep.json", SLEEP_BOUNDS, "record_id"),
+        ("activity_records", "activity.json", ACTIVITY_BOUNDS, "record_id"),
+    ]
+
+    rows: list[dict] = []
+    scanned = 0
+    rules = 0
+
+    for table, filename, bounds, key in tables:
+        path = raw_dir / filename
+        if not path.exists():
+            continue
+        df = pd.read_json(path)
+        scanned += len(df)
+
+        for column, (lo, hi) in bounds.items():
+            if column not in df.columns:
+                continue
+            rules += 1
+            for _, record in df[(df[column] < lo) | (df[column] > hi)].iterrows():
+                value = float(record[column])
+                side = "low" if value < lo else "high"
+                rows.append(
+                    {
+                        "Source table": f"bronze.{table}",
+                        "Record": record.get(key, ""),
+                        "Failed rule": f"{column} ∈ [{lo}, {hi}]",
+                        "Value": round(value, 1),
+                        "Why it fails": BOUND_REASONS.get(column, {}).get(side, ""),
+                    }
+                )
+
+    return pd.DataFrame(rows), scanned, rules
 
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -530,6 +589,39 @@ if len(all_rec) > 0 and "hrv_rmssd" in all_rec.columns:
     for trace in fig_hrv.data:
         trace.opacity = 1.0 if selected_user in (trace.name or "") else 0.3
     st.plotly_chart(fig_hrv, use_container_width=True)
+
+
+# ─── Row 6: Data Quality / Quarantine ─────────────────────────────────────────
+
+st.subheader("Data Quality — Silver Layer Quarantine")
+
+violations_df, records_scanned, rules_enforced = load_quality_report()
+quarantined = violations_df["Record"].nunique() if len(violations_df) > 0 else 0
+
+pass_rate = (records_scanned - quarantined) / max(records_scanned, 1) * 100
+
+qcol1, qcol2, qcol3, qcol4 = st.columns(4)
+qcol1.metric("Records Scanned", f"{records_scanned:,}")
+qcol2.metric("Quarantined", f"{quarantined}")
+qcol3.metric("Pass Rate", f"{pass_rate:.2f}%")
+qcol4.metric("Bound Rules Enforced", f"{rules_enforced}")
+
+if len(violations_df) > 0:
+    st.dataframe(
+        violations_df.sort_values(["Source table", "Record"]),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.caption(
+        "Rejected records are written to `fitlake.silver.quarantine` rather than "
+        "dropped, so a bad sensor is auditable instead of invisible. These are "
+        "injected optical-HR faults — lost skin contact reads implausibly low, "
+        "cadence lock spikes the peak — and HR zone minutes are generated before "
+        "the fault is applied, so the workout's strain stays coherent while the "
+        "reported HR does not."
+    )
+else:
+    st.success("All records passed physiological bound validation.")
 
 
 # ─── Footer ───────────────────────────────────────────────────────────────────

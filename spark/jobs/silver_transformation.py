@@ -19,32 +19,20 @@ Silver tables:
 """
 
 import os
+import sys
+from pathlib import Path
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 from loguru import logger
 
-
 # ── Validation Bounds (physiologically based) ─────────────────────────────────
+# Defined once in quality/bounds.py so the quarantine rules the Silver job
+# enforces are the same ones the dashboard reports.
 
-HRV_BOUNDS = {
-    "hrv_rmssd_ms": (5, 250),
-    "hrv_sdnn_ms": (10, 400),
-    "respiratory_rate_brpm": (8, 30),
-}
-SLEEP_BOUNDS = {
-    "total_sleep_hours": (1.0, 14.0),
-    "sleep_efficiency_pct": (20.0, 100.0),
-    "spo2_avg_pct": (80.0, 100.0),
-    "resting_hr_bpm": (25.0, 130.0),
-}
-ACTIVITY_BOUNDS = {
-    "avg_hr_bpm": (30.0, 220.0),
-    "peak_hr_bpm": (30.0, 225.0),
-    "steps": (0, 100_000),
-    "active_calories": (0, 5_000),
-}
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from quality.bounds import ACTIVITY_BOUNDS, HRV_BOUNDS, SLEEP_BOUNDS  # noqa: E402
 
 
 def build_spark_session() -> SparkSession:

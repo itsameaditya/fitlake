@@ -22,11 +22,13 @@ FitLake is a production-grade data lakehouse that answers this question. It inge
 
 ![Recovery Dashboard — KPIs and trend line with Green/Yellow/Red recovery zones](docs/screenshots/dashboard_full.png)
 
-![Strain vs Next-Day Recovery scatter plot and Recovery Score component radar chart](docs/screenshots/dashboard_charts.png)
+![Strain vs Next-Day Recovery scatter with an overall trendline, beside the Recovery Score component radar](docs/screenshots/dashboard_charts.png)
 
-![Sleep architecture breakdown (Deep/REM/Light/Awake) with sleep debt overlay](docs/screenshots/dashboard_sleep.png)
+![Sleep architecture breakdown (Deep/REM/Light/Awake) above a 14-day rolling sleep-debt panel](docs/screenshots/dashboard_sleep.png)
 
-![Weekly recovery heatmap showing day-of-week patterns](docs/screenshots/dashboard_heatmap.png)
+![Weekly recovery heatmap showing day-of-week patterns, with each day's score printed in the cell](docs/screenshots/dashboard_heatmap.png)
+
+![Data quality panel listing the quarantined records, the physiological bound each one broke and the offending value](docs/screenshots/dashboard_quality.png)
 
 ---
 
