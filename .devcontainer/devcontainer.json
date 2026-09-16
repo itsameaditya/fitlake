@@ -1,0 +1,30 @@
+{
+  "name": "FitLake Dashboard",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  // Only the dashboard dependencies. The root requirements.txt pins Spark,
+  // Airflow and Iceberg — the production pipeline stack, none of which the
+  // dashboard needs, and which would make a Codespace slow to start.
+  // Python is pinned to 3.11 because numpy 1.26.4 publishes no 3.13 wheels.
+  "postCreateCommand": "pip install --upgrade pip && pip install -r analytics/requirements.txt",
+
+  // data/raw is gitignored, so the dashboard generates its own seeded dataset
+  // on first load (~1s). Nothing to download.
+  "postAttachCommand": {
+    "dashboard": "streamlit run analytics/dashboard.py --server.port 8501 --server.address 0.0.0.0"
+  },
+
+  "forwardPorts": [8501],
+  "portsAttributes": {
+    "8501": {
+      "label": "FitLake dashboard",
+      "onAutoForward": "openPreview"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  }
+}

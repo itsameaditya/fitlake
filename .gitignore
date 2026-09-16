@@ -24,6 +24,8 @@ data/output/
 *.parquet
 *.json
 !data/sample/*.json
+# Config, not data — the blanket *.json above is aimed at generated datasets.
+!.devcontainer/*.json
 
 # Jupyter
 .ipynb_checkpoints/
