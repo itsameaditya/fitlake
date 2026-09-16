@@ -1,0 +1,21 @@
+# Dashboard-only dependencies for the hosted demo (Streamlit Community Cloud).
+#
+# Community Cloud searches the entrypoint's directory before the repo root, so
+# this file takes precedence over the root requirements.txt for the deployed app.
+#
+# The root requirements.txt pins Spark, Airflow and Iceberg —
+# the production pipeline stack. None of it is needed to serve the dashboard,
+# which runs the pure-Pandas scoring engines from pipeline/aggregation/.
+# Installing the full set on a hosted runner exceeds its build limits.
+
+streamlit==1.35.0
+plotly==5.22.0
+pandas==2.2.2
+numpy==1.26.4
+scipy==1.13.1
+click==8.1.7
+loguru==0.7.2
+
+# Required by plotly.express trendline="ols" on the strain-vs-recovery
+# scatter. Without it the dashboard raises ModuleNotFoundError mid-render.
+statsmodels==0.14.2

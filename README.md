@@ -6,6 +6,9 @@
 ![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.9-017cee?logo=apacheairflow)
 ![DuckDB](https://img.shields.io/badge/DuckDB-0.10-ffd700)
 ![CI](https://github.com/itsameaditya/fitlake/actions/workflows/ci.yml/badge.svg)
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](STREAMLIT_URL_PLACEHOLDER)
+
+**▶ [Try the live dashboard](STREAMLIT_URL_PLACEHOLDER)** — no install required.
 
 Modern fitness wearables generate thousands of daily sensor readings — HRV, sleep stages, heart rate zones, SpO₂ — but raw data alone doesn't answer the question athletes actually care about: **"How recovered am I today, and should I train hard or rest?"**
 
@@ -19,11 +22,13 @@ FitLake is a production-grade data lakehouse that answers this question. It inge
 
 ![Recovery Dashboard — KPIs and trend line with Green/Yellow/Red recovery zones](docs/screenshots/dashboard_full.png)
 
-![Strain vs Next-Day Recovery scatter plot and Recovery Score component radar chart](docs/screenshots/dashboard_charts.png)
+![Strain vs Next-Day Recovery scatter with an overall trendline, beside the Recovery Score component radar](docs/screenshots/dashboard_charts.png)
 
-![Sleep architecture breakdown (Deep/REM/Light/Awake) with sleep debt overlay](docs/screenshots/dashboard_sleep.png)
+![Sleep architecture breakdown (Deep/REM/Light/Awake) above a 14-day rolling sleep-debt panel](docs/screenshots/dashboard_sleep.png)
 
-![Weekly recovery heatmap showing day-of-week patterns](docs/screenshots/dashboard_heatmap.png)
+![Weekly recovery heatmap showing day-of-week patterns, with each day's score printed in the cell](docs/screenshots/dashboard_heatmap.png)
+
+![Data quality panel listing the quarantined records, the physiological bound each one broke and the offending value](docs/screenshots/dashboard_quality.png)
 
 ---
 
@@ -33,13 +38,13 @@ After processing 900 user-days through the full pipeline ([detailed analysis](do
 
 | Finding | Data |
 |---|---|
-| Sleep under 6h drops recovery by **11 points** | 59.7 avg vs 70.6 for 7-9h sleepers |
-| Poor sleep drops HRV by **8.4 ms** | 41.7ms on <6h vs 50.2ms on 7h+ nights |
-| Recovery peaks **Sunday**, bottoms **Saturday** | 10-point spread across the week |
-| Recovery weeks boost scores by **7.5 points** | 75.8 avg vs 68.3 during training weeks |
-| HRV-Recovery correlation: **r = 0.473** | Strongest single predictor |
-| Athletes and beginners score the **same** (~70) | Personal baselines normalize fitness level |
-| Quality pipeline quarantined **53 bad records** | 5.9% of activity data had sensor anomalies |
+| Sleep under 6h drops recovery by **12.5 points** | 58.2 avg vs 70.6 for 7-9h sleepers |
+| Poor sleep drops HRV by **4.6 ms** | 45.4ms on <6h vs 50.0ms on 7h+ nights |
+| Recovery peaks **Sunday**, bottoms **Saturday** | 16.7-point spread across the week |
+| Recovery weeks boost scores by **12.0 points** | 79.0 avg vs 67.1 during training weeks |
+| HRV-Recovery correlation: **r = 0.534** | Strongest single predictor |
+| Athletes and beginners score the **same** (~70) | 69.8 vs 70.6 — personal baselines normalize fitness level |
+| Quality pipeline quarantined **8 bad records** | 0.9% of activity data carried injected sensor faults |
 
 ---
 
@@ -65,7 +70,7 @@ After processing 900 user-days through the full pipeline ([detailed analysis](do
   └─────────────────────────────────────────────────────────────┘
         │                    │                      │
         ▼                    ▼                      ▼
-  Great Expectations   OpenLineage +          DuckDB + Streamlit
+  Bound validation     OpenLineage +          DuckDB + Streamlit
   Data Quality         Marquez Lineage UI     Analytics Dashboard
 ```
 
@@ -102,11 +107,14 @@ Red    < 33  → Rest day.
 
 ```bash
 git clone https://github.com/itsameaditya/fitlake.git && cd fitlake
-pip install numpy pandas scipy click loguru streamlit plotly
+pip install -r analytics/requirements.txt
 make generate-data        # 10 users × 90 days → data/raw/
-make run-local            # Recovery scores + strain + sleep analytics
+make run-local            # Recovery scores + strain + sleep analytics → data/output/
 make dashboard-local      # http://localhost:8501
 ```
+
+`make generate-data` is optional — the dashboard generates the dataset on
+first run if `data/raw/` is empty.
 
 ### Full Stack (Docker)
 
@@ -142,7 +150,7 @@ pytest tests/ --cov=pipeline        # Coverage report
 | **Python** | Data generation, scoring algorithms, type hints, dataclasses → `pipeline/aggregation/` |
 | **Data modeling** | Medallion architecture, star schema Gold layer, quarantine pattern → `spark/jobs/` |
 | **Apache Airflow** | TaskGroups, BranchPythonOperator, SparkSubmitOperator, OpenLineage → `airflow/dags/` |
-| **Data quality** | Great Expectations suites, physiological bound validation, quarantine → `quality/` |
+| **Data quality** | Physiological bound validation, quarantine pattern, JSON quality report → `quality/` |
 | **Data lineage** | OpenLineage events → Marquez, automatic from Spark listener → `spark/conf/` |
 | **AWS** | S3, EMR Serverless, IAM roles → `infrastructure/terraform/` |
 | **Container orchestration** | Docker Compose with 10 services, health checks, dependency ordering → `docker-compose.yml` |
@@ -191,7 +199,7 @@ fitlake/
 | Object storage | MinIO (local) / AWS S3 (cloud) | Production-identical S3 API, zero code changes ([details](docs/DESIGN_DECISIONS.md#3-minio-over-localstack-for-s3-emulation)) |
 | Cloud compute | AWS EMR Serverless | No cluster management, pay-per-second ([details](docs/DESIGN_DECISIONS.md#10-terraform-with-emr-serverless-over-eks)) |
 | Orchestration | Apache Airflow 2.9 | TaskGroups, branching, Spark integration ([details](docs/DESIGN_DECISIONS.md#7-airflow-over-prefect-for-orchestration)) |
-| Data quality | Great Expectations | Quarantine pattern, not silent drops ([details](docs/DESIGN_DECISIONS.md#6-quarantine-table-over-silent-drops)) |
+| Data quality | Explicit bound assertions (Pandas) | Quarantine pattern, not silent drops ([details](docs/DESIGN_DECISIONS.md#6-quarantine-table-over-silent-drops)) |
 | Data lineage | OpenLineage + Marquez | Automatic from Spark listener, zero code changes |
 | Analytics engine | DuckDB | Free, Iceberg-native, Snowflake-compatible SQL ([details](docs/DESIGN_DECISIONS.md#2-duckdb-over-snowflake-for-local-analytics)) |
 | Dashboard | Streamlit + Plotly | Interactive, Python-native, 7 chart types |

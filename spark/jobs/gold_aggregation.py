@@ -33,22 +33,27 @@ from pipeline.aggregation.sleep_analyzer import compute_sleep_metrics
 
 def build_spark_session() -> SparkSession:
     return (
-        SparkSession.builder
-        .appName("FitLake-Gold-Aggregation")
-        .config("spark.sql.extensions",
-                "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        SparkSession.builder.appName("FitLake-Gold-Aggregation")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
         .config("spark.sql.catalog.fitlake", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.fitlake.type", "hadoop")
         .config("spark.sql.catalog.fitlake.warehouse", "s3a://fitlake/warehouse")
-        .config("spark.hadoop.fs.s3a.endpoint",
-                os.getenv("MINIO_ENDPOINT", "http://minio:9000"))
-        .config("spark.hadoop.fs.s3a.access.key",
-                os.getenv("MINIO_ROOT_USER", "minioadmin"))
-        .config("spark.hadoop.fs.s3a.secret.key",
-                os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"))
+        .config(
+            "spark.hadoop.fs.s3a.endpoint",
+            os.getenv("MINIO_ENDPOINT", "http://minio:9000"),
+        )
+        .config(
+            "spark.hadoop.fs.s3a.access.key", os.getenv("MINIO_ROOT_USER", "minioadmin")
+        )
+        .config(
+            "spark.hadoop.fs.s3a.secret.key",
+            os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
+        )
         .config("spark.hadoop.fs.s3a.path.style.access", "true")
-        .config("spark.hadoop.fs.s3a.impl",
-                "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .getOrCreate()
     )
 
@@ -64,10 +69,14 @@ def build_daily_recovery(spark: SparkSession) -> DataFrame:
         "user_id", "date", "hrv_rmssd_ms", "hrv_sdnn_ms", "respiratory_rate_brpm"
     )
     sleep = spark.table("fitlake.silver.sleep_clean").select(
-        "user_id", "date",
-        "total_sleep_hours", "sleep_efficiency_pct",
-        "rem_sleep_minutes", "deep_sleep_minutes",
-        "spo2_avg_pct", "resting_hr_bpm",
+        "user_id",
+        "date",
+        "total_sleep_hours",
+        "sleep_efficiency_pct",
+        "rem_sleep_minutes",
+        "deep_sleep_minutes",
+        "spo2_avg_pct",
+        "resting_hr_bpm",
     )
 
     joined = hrv.join(sleep, on=["user_id", "date"], how="inner")
@@ -85,18 +94,19 @@ def build_daily_recovery(spark: SparkSession) -> DataFrame:
 def build_strain_scores(spark: SparkSession) -> DataFrame:
     """Compute strain from Silver activity table."""
     activity = spark.table("fitlake.silver.activity_clean")
-    users_df = spark.sql("""
+    users_df = spark.sql(
+        """
         SELECT DISTINCT user_id, 220 - CAST(RAND(42) * 25 AS INT) AS max_hr
         FROM fitlake.silver.activity_clean
-    """)  # Approx max_hr; ideally from user_profiles table
+    """
+    )  # Approx max_hr; ideally from user_profiles table
 
     activity_pd = activity.toPandas()
     users_pd = users_df.toPandas()
 
     strain_pd = compute_strain_scores(activity_pd, users_pd)
-    return (
-        spark.createDataFrame(strain_pd)
-             .withColumn("computed_at", F.current_timestamp())
+    return spark.createDataFrame(strain_pd).withColumn(
+        "computed_at", F.current_timestamp()
     )
 
 
@@ -104,9 +114,8 @@ def build_sleep_analytics(spark: SparkSession) -> DataFrame:
     """Enriched sleep metrics from Silver."""
     sleep_pd = spark.table("fitlake.silver.sleep_clean").toPandas()
     enriched = compute_sleep_metrics(sleep_pd)
-    return (
-        spark.createDataFrame(enriched)
-             .withColumn("computed_at", F.current_timestamp())
+    return spark.createDataFrame(enriched).withColumn(
+        "computed_at", F.current_timestamp()
     )
 
 
@@ -126,18 +135,16 @@ def build_cohort_benchmarks(spark: SparkSession) -> DataFrame:
 
     window_all = Window.orderBy("avg_recovery")
     benchmarks = percentiles.withColumn(
-        "recovery_percentile",
-        F.round(F.percent_rank().over(window_all) * 100, 1)
+        "recovery_percentile", F.round(F.percent_rank().over(window_all) * 100, 1)
     )
     return benchmarks.withColumn("computed_at", F.current_timestamp())
 
 
 def write_gold_table(spark: SparkSession, df: DataFrame, table_name: str) -> None:
     """Write or replace a Gold Iceberg table."""
-    df.writeTo(table_name) \
-      .tableProperty("write.format.default", "parquet") \
-      .tableProperty("write.parquet.compression-codec", "snappy") \
-      .createOrReplace()
+    df.writeTo(table_name).tableProperty(
+        "write.format.default", "parquet"
+    ).tableProperty("write.parquet.compression-codec", "snappy").createOrReplace()
     count = spark.table(table_name).count()
     logger.info(f"Written → {table_name} ({count:,} rows)")
 
@@ -156,16 +163,20 @@ def run_iceberg_maintenance(spark: SparkSession) -> None:
     ]
     for table in gold_tables:
         try:
-            spark.sql(f"""
+            spark.sql(
+                f"""
                 CALL fitlake.system.expire_snapshots(
                     table => '{table}',
                     older_than => TIMESTAMP '{__import__('datetime').datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}',
                     retain_last => 3
                 )
-            """)
-            spark.sql(f"""
+            """
+            )
+            spark.sql(
+                f"""
                 CALL fitlake.system.rewrite_data_files(table => '{table}')
-            """)
+            """
+            )
             logger.info(f"Maintenance complete: {table}")
         except Exception as e:
             logger.warning(f"Maintenance skipped for {table}: {e}")
@@ -194,12 +205,14 @@ def run_gold_aggregation(spark: SparkSession) -> None:
 
     # Demo: Iceberg time travel query
     logger.info("Demonstrating Iceberg time travel...")
-    spark.sql("""
+    spark.sql(
+        """
         SELECT user_id, date, recovery_score, recovery_state
         FROM fitlake.gold.daily_recovery
         VERSION AS OF 1
         LIMIT 5
-    """).show()
+    """
+    ).show()
 
     logger.success("Gold aggregation complete.")
 

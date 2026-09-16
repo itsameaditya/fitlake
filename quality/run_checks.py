@@ -1,35 +1,29 @@
 """
-Data Quality — Great Expectations Validation Suite.
+Data Quality — physiological bound validation.
 
-Validates Bronze Iceberg tables before Silver transformation.
+Validates raw sensor tables before Silver transformation.
 Checks include:
   - Completeness: no null primary keys
-  - Freshness: data not older than 2 days
   - Value ranges: physiologically valid sensor readings
   - Uniqueness: no duplicate records per user-date
-  - Referential integrity: all user_ids in known set
 
-Results are written to a GE Data Docs HTML report and
+Results are written to quality/reports/quality_report.json and the
 quality_passed flag is pushed to Airflow XCom.
+
+Implementation note: these are explicit bound assertions in pure Pandas, not
+a Great Expectations suite. The expectation-style rule names below mirror GE's
+vocabulary for readability, but no GE data context, suite, or checkpoint is
+involved — the dependency is not installed or imported.
 """
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from loguru import logger
-
-try:
-    import great_expectations as gx
-    from great_expectations.core.batch import RuntimeBatchRequest
-    GE_AVAILABLE = True
-except ImportError:
-    GE_AVAILABLE = False
-    logger.warning("great_expectations not installed. Running basic checks instead.")
 
 
 def _basic_checks(df: pd.DataFrame, table_name: str, rules: list[dict]) -> list[dict]:
@@ -42,30 +36,40 @@ def _basic_checks(df: pd.DataFrame, table_name: str, rules: list[dict]) -> list[
         if check_type == "not_null":
             null_count = int(df[col].isna().sum())
             passed = bool(null_count == 0)
-            results.append({
-                "expectation": f"column '{col}' to not be null",
-                "passed": passed,
-                "details": f"{null_count} null values found" if not passed else "OK",
-            })
+            results.append(
+                {
+                    "expectation": f"column '{col}' to not be null",
+                    "passed": passed,
+                    "details": (
+                        f"{null_count} null values found" if not passed else "OK"
+                    ),
+                }
+            )
 
         elif check_type == "between":
             lo, hi = rule["min"], rule["max"]
             out_of_range = int(df[(df[col] < lo) | (df[col] > hi)][col].count())
             passed = bool(out_of_range == 0)
-            results.append({
-                "expectation": f"column '{col}' to be between {lo} and {hi}",
-                "passed": passed,
-                "details": f"{out_of_range} out-of-range values" if not passed else "OK",
-            })
+            results.append(
+                {
+                    "expectation": f"column '{col}' to be between {lo} and {hi}",
+                    "passed": passed,
+                    "details": (
+                        f"{out_of_range} out-of-range values" if not passed else "OK"
+                    ),
+                }
+            )
 
         elif check_type == "unique":
             dup_count = int(df.duplicated(subset=[col]).sum())
             passed = bool(dup_count == 0)
-            results.append({
-                "expectation": f"column '{col}' to be unique",
-                "passed": passed,
-                "details": f"{dup_count} duplicates found" if not passed else "OK",
-            })
+            results.append(
+                {
+                    "expectation": f"column '{col}' to be unique",
+                    "passed": passed,
+                    "details": f"{dup_count} duplicates found" if not passed else "OK",
+                }
+            )
 
     return results
 
@@ -145,11 +149,15 @@ def run_quality_checks(data_dir: str = "data/raw") -> bool:
     report_path = Path("quality/reports/quality_report.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, "w") as f:
-        json.dump({
-            "run_timestamp": datetime.utcnow().isoformat(),
-            "results": all_results,
-            "overall_passed": not any_critical_failure,
-        }, f, indent=2)
+        json.dump(
+            {
+                "run_timestamp": datetime.utcnow().isoformat(),
+                "results": all_results,
+                "overall_passed": not any_critical_failure,
+            },
+            f,
+            indent=2,
+        )
 
     logger.info(f"Quality report written → {report_path}")
 
@@ -163,5 +171,6 @@ def run_quality_checks(data_dir: str = "data/raw") -> bool:
 
 if __name__ == "__main__":
     import sys
+
     passed = run_quality_checks()
     sys.exit(0 if passed else 1)

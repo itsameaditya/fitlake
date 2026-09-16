@@ -4,7 +4,7 @@ FitLake Orchestration DAG — Apache Airflow 2.9
 Orchestrates the full medallion pipeline:
   1. generate_data     → synthetic sensor data
   2. bronze_ingestion  → raw → Iceberg Bronze (Spark)
-  3. data_quality      → Great Expectations validation
+  3. data_quality      → physiological bound validation
   4. silver_transform  → Bronze → Silver (Spark)
   5. gold_aggregation  → Silver → Gold (Spark)
   6. run_dashboard     → Refresh Streamlit cache
@@ -101,18 +101,20 @@ with DAG(
         )
 
     # ── Stage 2: Data Quality Checks ──────────────────────────────────────────
-    with TaskGroup("quality_checks", tooltip="Great Expectations validation") as quality_group:
+    with TaskGroup(
+        "quality_checks", tooltip="Physiological bound validation"
+    ) as quality_group:
         run_quality = BashOperator(
-            task_id="run_great_expectations",
+            task_id="run_quality_checks",
             bash_command="python /opt/spark/jobs/../../../quality/run_checks.py",
-            doc_md="Validate Bronze tables with Great Expectations suites.",
+            doc_md="Validate raw tables against physiological bounds.",
         )
 
         def check_quality_results(**context) -> str:
             """Branch: if quality fails, go to quarantine alert; else continue."""
-            # In production: read from XCom or GE checkpoint results
+            # In production: read the checkpoint result from XCom
             quality_passed = context["ti"].xcom_pull(
-                task_ids="quality_checks.run_great_expectations",
+                task_ids="quality_checks.run_quality_checks",
                 key="quality_passed",
             )
             return "quality_checks.quality_passed" if quality_passed else "quality_checks.quality_failed_alert"
