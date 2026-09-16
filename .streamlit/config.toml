@@ -1,0 +1,15 @@
+# Pins the hosted demo's appearance. Without this, Streamlit follows each
+# viewer's `prefers-color-scheme`, so the live app would look different from
+# the screenshots in the README depending on the visitor's OS setting.
+# primaryColor matches the recovery trend line in the dashboard charts.
+[theme]
+base = "dark"
+primaryColor = "#00BCD4"
+
+[browser]
+gatherUsageStats = false
+
+# Hosted demo, not a development instance: hide the app-creator toolbar so
+# visitors get the dashboard rather than a "Deploy" button.
+[client]
+toolbarMode = "viewer"

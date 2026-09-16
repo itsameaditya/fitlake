@@ -5,15 +5,16 @@ Computes a 0–21 cardiovascular strain score per day, modeled after
 the WHOOP strain metric and Borg RPE research.
 
 The score is derived from time spent in each heart rate zone, weighted
-exponentially — Zone 6 (>95% max HR) contributes ~10× more than Zone 1.
+exponentially — a Zone 6 minute costs 40× a Zone 1 minute.
 
-Zone thresholds (% of max HR):
-  Zone 1: <50%   — Recovery / resting
-  Zone 2: 50-60% — Light aerobic
-  Zone 3: 60-70% — Moderate aerobic
-  Zone 4: 70-80% — Anaerobic threshold
-  Zone 5: 80-90% — VO2 max zone
-  Zone 6: >90%   — Neuromuscular peak
+Zone thresholds (% of max HR), matching the bands assigned in
+data/generate_data.py:_estimate_hr_zones:
+  Zone 1: <60%   — Recovery / resting
+  Zone 2: 60-70% — Light aerobic
+  Zone 3: 70-80% — Moderate aerobic
+  Zone 4: 80-90% — Anaerobic threshold
+  Zone 5: 90-95% — VO2 max zone
+  Zone 6: >95%   — Neuromuscular peak
 """
 
 from __future__ import annotations
@@ -36,15 +37,27 @@ ZONE_WEIGHTS = {
 
 MAX_STRAIN = 21.0
 
-# Weighted minutes needed to reach max strain. Chosen so the top of the
-# distribution is not truncated: at 150 the hardest 4.3% of sessions all
-# clipped to exactly 21.0, flattening the top of the chart into a straight
-# line. At 250, clipping falls to ~1% while all five strain categories stay
-# populated and "All Out" stays rare.
+# Weighted minutes that define an all-out day — the load mapped to 21.0.
+# Anchored physiologically rather than fitted to the sample: 40 minutes at
+# neuromuscular peak (Zone 6, weight 10), or an equivalent mix such as 80
+# minutes at VO2 max (Zone 5, weight 5).
+ALL_OUT_LOAD = 400.0
+
+# Shape of the curve below that anchor. WHOOP's published strain scale is
+# logarithmic — the first hard minutes of a session move the score far more
+# than the last ones — so this maps load through log1p rather than linearly.
 #
-# Note this maps weighted load to strain linearly. WHOOP's published scale is
-# logarithmic, so very hard sessions compress less there than here.
-NORMALIZATION_FACTOR = 250.0
+# A linear map could not fit this distribution: weighted load is right-skewed
+# (median workout 34, max 400), so any divisor either crushed typical sessions
+# or clipped the top. At the previous 250 the median workout scored 2.9 and
+# 81% of days landed in "Recovery" despite 627 of 900 containing a real
+# workout, while the hardest 1.6% all clipped to exactly 21.0 — leaving more
+# days at the ceiling than in "Moderate" and "Hard" combined.
+#
+# The knee sets how fast early load accumulates: at 15 weighted minutes a
+# median aerobic session lands in "Light" and a sustained Zone 4-5 session in
+# "Moderate"/"Hard", with the ceiling reached only by genuine outliers.
+LOAD_KNEE = 15.0
 
 
 @dataclass
@@ -83,12 +96,17 @@ def calculate_strain_score(
     """
     Compute strain score from zone minutes.
 
-    Uses the exponential zone-weight formula:
-      raw_strain = Σ (zone_minutes[z] × ZONE_WEIGHTS[z])
-      strain_score = (raw_strain / NORMALIZATION_FACTOR) × MAX_STRAIN
+    Exponential zone weights, mapped to 0–21 on a log scale:
+      raw_strain    = Σ (zone_minutes[z] × ZONE_WEIGHTS[z])
+      strain_score  = MAX_STRAIN × log1p(raw / LOAD_KNEE)
+                                 ÷ log1p(ALL_OUT_LOAD / LOAD_KNEE)
+
+    Zero load scores 0, ALL_OUT_LOAD scores exactly 21, and loads beyond it
+    clip — so a freak session cannot drag the rest of the scale down.
     """
     raw = sum(zone_minutes.get(z, 0) * w for z, w in ZONE_WEIGHTS.items())
-    score = float(np.clip((raw / NORMALIZATION_FACTOR) * MAX_STRAIN, 0, MAX_STRAIN))
+    normalized = np.log1p(raw / LOAD_KNEE) / np.log1p(ALL_OUT_LOAD / LOAD_KNEE)
+    score = float(np.clip(normalized * MAX_STRAIN, 0, MAX_STRAIN))
 
     total_minutes = int(sum(zone_minutes.values()))
     peak_pct = peak_hr / max_hr * 100 if max_hr > 0 else 0
