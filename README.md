@@ -6,9 +6,16 @@
 ![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.9-017cee?logo=apacheairflow)
 ![DuckDB](https://img.shields.io/badge/DuckDB-0.10-ffd700)
 ![CI](https://github.com/itsameaditya/fitlake/actions/workflows/ci.yml/badge.svg)
-[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](STREAMLIT_URL_PLACEHOLDER)
+### ▶ Run it yourself — no install, no download
 
-**▶ [Try the live dashboard](STREAMLIT_URL_PLACEHOLDER)** — no install required.
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/itsameaditya/fitlake?quickstart=1)
+[![Deploy your own copy](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=itsameaditya%2Ffitlake&branch=main&mainModule=analytics%2Fdashboard.py)
+
+- **Codespaces** — opens the dashboard in your browser. The devcontainer installs the dashboard dependencies and starts Streamlit on port 8501.
+- **Streamlit Community Cloud** — deploys your own free copy from this repo. Choose Python 3.11 or 3.12 under *Advanced settings*.
+- **Locally** — clone, install, run: see [Quick Start](#quick-start) below.
+
+The app carries no dataset: it generates a seeded synthetic one on first boot (~1s), so every copy shows the same scores.
 
 Modern fitness wearables generate thousands of daily sensor readings — HRV, sleep stages, heart rate zones, SpO₂ — but raw data alone doesn't answer the question athletes actually care about: **"How recovered am I today, and should I train hard or rest?"**
 
