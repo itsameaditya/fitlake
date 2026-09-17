@@ -5,7 +5,8 @@
   // Only the dashboard dependencies. The root requirements.txt pins Spark,
   // Airflow and Iceberg — the production pipeline stack, none of which the
   // dashboard needs, and which would make a Codespace slow to start.
-  // Python is pinned to 3.11 because numpy 1.26.4 publishes no 3.13 wheels.
+  // 3.11 is the floor the pins require (numpy 2.3 and scipy 1.16 both need
+  // >= 3.11); they also publish 3.14 wheels, so newer images work too.
   "postCreateCommand": "pip install --upgrade pip && pip install -r analytics/requirements.txt",
 
   // data/raw is gitignored, so the dashboard generates its own seeded dataset

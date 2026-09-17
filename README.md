@@ -12,7 +12,7 @@
 [![Deploy your own copy](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=itsameaditya%2Ffitlake&branch=main&mainModule=analytics%2Fdashboard.py)
 
 - **Codespaces** — opens the dashboard in your browser. The devcontainer installs the dashboard dependencies and starts Streamlit on port 8501.
-- **Streamlit Community Cloud** — deploys your own free copy from this repo. Choose Python 3.11 or 3.12 under *Advanced settings*.
+- **Streamlit Community Cloud** — deploys your own free copy from this repo. Every dashboard pin ships a Python 3.14 wheel, so the default settings build without touching *Advanced settings*.
 - **Locally** — clone, install, run: see [Quick Start](#quick-start) below.
 
 The app carries no dataset: it generates a seeded synthetic one on first boot (~1s), so every copy shows the same scores.

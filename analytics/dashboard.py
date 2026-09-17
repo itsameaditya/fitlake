@@ -352,7 +352,7 @@ if len(rec_df) > 0:
         height=350,
         hovermode="x unified",
     )
-    st.plotly_chart(fig_recovery, use_container_width=True)
+    st.plotly_chart(fig_recovery, width="stretch")
 
 
 # ─── Row 2: Strain vs Recovery + Sleep Components ─────────────────────────────
@@ -411,7 +411,7 @@ with col_left:
             },
             height=350,
         )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.plotly_chart(fig_scatter, width="stretch")
     else:
         st.info("Not enough data for scatter plot.")
 
@@ -453,7 +453,7 @@ with col_right:
             height=350,
             showlegend=False,
         )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, width="stretch")
 
 
 # ─── Row 3: Sleep Architecture ────────────────────────────────────────────────
@@ -516,7 +516,7 @@ if len(sleep_df) > 0:
     fig_sleep.update_yaxes(title_text="Debt (h)", row=2, col=1)
     fig_sleep.update_xaxes(title_text="Date", row=2, col=1)
 
-    st.plotly_chart(fig_sleep, use_container_width=True)
+    st.plotly_chart(fig_sleep, width="stretch")
 
 
 # ─── Row 4: Weekly Pattern Heatmap ────────────────────────────────────────────
@@ -560,7 +560,7 @@ if len(rec_df) >= 14:
         labels={"x": "Week Number", "y": "Day of Week", "color": "Recovery"},
         height=300,
     )
-    st.plotly_chart(fig_heatmap, use_container_width=True)
+    st.plotly_chart(fig_heatmap, width="stretch")
 else:
     st.info("At least 2 weeks of data needed for the heatmap.")
 
@@ -588,7 +588,7 @@ if len(all_rec) > 0 and "hrv_rmssd" in all_rec.columns:
     # Highlight selected user
     for trace in fig_hrv.data:
         trace.opacity = 1.0 if selected_user in (trace.name or "") else 0.3
-    st.plotly_chart(fig_hrv, use_container_width=True)
+    st.plotly_chart(fig_hrv, width="stretch")
 
 
 # ─── Row 6: Data Quality / Quarantine ─────────────────────────────────────────
@@ -609,7 +609,7 @@ qcol4.metric("Bound Rules Enforced", f"{rules_enforced}")
 if len(violations_df) > 0:
     st.dataframe(
         violations_df.sort_values(["Source table", "Record"]),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
     st.caption(
