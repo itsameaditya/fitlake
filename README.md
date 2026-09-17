@@ -6,10 +6,14 @@
 ![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.9-017cee?logo=apacheairflow)
 ![DuckDB](https://img.shields.io/badge/DuckDB-0.10-ffd700)
 ![CI](https://github.com/itsameaditya/fitlake/actions/workflows/ci.yml/badge.svg)
-### ▶ Run it yourself — no install, no download
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://itsameaditya-fitlake-analyticsdashboard-lailor.streamlit.app/)
+
+**▶ [Try the live dashboard](https://itsameaditya-fitlake-analyticsdashboard-lailor.streamlit.app/)** — 10 users × 90 days, scored in the browser. No install, no sign-in.
+
+### Or run it yourself
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/itsameaditya/fitlake?quickstart=1)
-[![Deploy your own copy](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=itsameaditya%2Ffitlake&branch=main&mainModule=analytics%2Fdashboard.py)
+[![Deploy your own copy](https://img.shields.io/badge/Deploy%20your%20own-Streamlit%20Cloud-FF4B4B?logo=streamlit&logoColor=white)](https://share.streamlit.io/deploy?repository=itsameaditya%2Ffitlake&branch=main&mainModule=analytics%2Fdashboard.py)
 
 - **Codespaces** — opens the dashboard in your browser. The devcontainer installs the dashboard dependencies and starts Streamlit on port 8501.
 - **Streamlit Community Cloud** — deploys your own free copy from this repo. Every dashboard pin ships a Python 3.14 wheel, so the default settings build without touching *Advanced settings*.
